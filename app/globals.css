@@ -1,0 +1,467 @@
+:root {
+  --font-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-mono: "SFMono-Regular", "Menlo", "Monaco", monospace;
+  --bg: #f6f1e8;
+  --bg-strong: #efe5d7;
+  --surface: rgba(255, 255, 255, 0.88);
+  --surface-strong: #ffffff;
+  --text: #173256;
+  --text-soft: rgba(23, 50, 86, 0.72);
+  --line: rgba(23, 50, 86, 0.12);
+  --shadow: 0 18px 40px rgba(53, 64, 85, 0.12);
+  --accent: #9b5f20;
+  --accent-strong: #183157;
+  --accent-soft: #f1e0cf;
+  --cool-soft: #dbe8f6;
+  --danger-soft: #f5d9cc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.7), transparent 30%),
+    linear-gradient(135deg, #f9f4ec 0%, #efe7db 42%, #e8dfd1 100%);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--font-sans), sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.pageShell {
+  width: min(1400px, calc(100vw - 48px));
+  margin: 0 auto;
+  padding: 32px 0 48px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.8fr);
+  gap: 24px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.heroKicker,
+.sectionEyebrow,
+.resultTag,
+.narrativeLabel {
+  margin: 0 0 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.hero h1,
+.sectionHeader h2,
+.primaryResultText h3 {
+  margin: 0;
+  line-height: 0.95;
+}
+
+.hero h1 {
+  max-width: 12ch;
+  font-size: clamp(2.6rem, 5vw, 4.6rem);
+}
+
+.heroText,
+.sectionHeader p,
+.primaryResultText p,
+.outputHelper,
+.narrativeCard p {
+  margin: 12px 0 0;
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+
+.heroMeta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.metaBlock,
+.panelCard,
+.choiceButton,
+.segment,
+.narrativeCard {
+  border: 1px solid var(--line);
+  backdrop-filter: blur(14px);
+}
+
+.metaBlock {
+  background: rgba(255, 255, 255, 0.54);
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+
+.metaBlock span,
+.inputRowHeader span {
+  display: block;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+.metaBlock strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.15rem;
+}
+
+.workspaceGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.leftPanel,
+.rightPanel {
+  display: grid;
+  gap: 24px;
+}
+
+.panelCard {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.8));
+  border-radius: 32px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+.sectionHeader {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.sectionHeader.compact {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.sectionHeader h2 {
+  font-size: 1.7rem;
+}
+
+.inputStack {
+  display: grid;
+  gap: 22px;
+}
+
+.inputRow {
+  display: grid;
+  gap: 14px;
+}
+
+.inputRowHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.inputRowHeader h3,
+.outputCardHeader p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.inputRowHeader span {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+}
+
+.choiceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.choiceButton {
+  appearance: none;
+  border-radius: 20px;
+  padding: 15px 14px;
+  text-align: left;
+  cursor: pointer;
+  background: rgba(248, 249, 252, 0.82);
+  color: var(--text);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.choiceButton:hover {
+  transform: translateY(-1px);
+  border-color: rgba(24, 49, 87, 0.22);
+}
+
+.choiceButton span,
+.choiceButton small,
+.pill,
+.segment span {
+  display: block;
+}
+
+.choiceButton span {
+  font-weight: 800;
+}
+
+.choiceButton small {
+  margin-top: 6px;
+  color: var(--text-soft);
+}
+
+.choiceButtonActive {
+  background: linear-gradient(135deg, rgba(24, 49, 87, 0.92), rgba(45, 74, 121, 0.94));
+  border-color: rgba(24, 49, 87, 0.2);
+  color: #ffffff;
+  box-shadow: 0 18px 26px rgba(24, 49, 87, 0.24);
+}
+
+.choiceButtonActive small {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.systemFigure {
+  overflow: hidden;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #ffffff, rgba(255, 255, 255, 0.82));
+  border: 1px solid rgba(24, 49, 87, 0.08);
+  padding: 12px;
+}
+
+.resultPanel {
+  position: sticky;
+  top: 20px;
+}
+
+.ghostButton {
+  appearance: none;
+  border: 0;
+  background: rgba(24, 49, 87, 0.08);
+  color: var(--accent-strong);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primaryResult {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.gauge {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.gaugeInner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 1px rgba(24, 49, 87, 0.06);
+}
+
+.gaugeValue {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.gaugeLabel {
+  margin-top: -18px;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-soft);
+}
+
+.primaryResultText h3 {
+  margin-top: 6px;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+}
+
+.segmentedScale {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.segment {
+  border-radius: 16px;
+  min-height: 56px;
+  padding: 10px 12px;
+  background: rgba(246, 244, 240, 0.72);
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.segment span {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.segmentActive.cool {
+  background: linear-gradient(135deg, rgba(24, 49, 87, 0.16), rgba(219, 232, 246, 0.72));
+  border-color: rgba(24, 49, 87, 0.18);
+}
+
+.segmentActive.warm {
+  background: linear-gradient(135deg, rgba(155, 95, 32, 0.15), rgba(241, 224, 207, 0.86));
+  border-color: rgba(155, 95, 32, 0.2);
+}
+
+.segmentActive.hot {
+  background: linear-gradient(135deg, rgba(24, 49, 87, 0.96), rgba(155, 95, 32, 0.92));
+  border-color: rgba(24, 49, 87, 0.24);
+  color: #ffffff;
+}
+
+.outputGrid {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.outputCard {
+  background: rgba(248, 246, 242, 0.76);
+  border-radius: 24px;
+  padding: 18px;
+}
+
+.outputCardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.pill {
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.pill-cool {
+  background: var(--cool-soft);
+}
+
+.pill-warm {
+  background: var(--accent-soft);
+}
+
+.pill-hot {
+  background: var(--accent-strong);
+  color: #ffffff;
+}
+
+.outputMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 14px 0;
+}
+
+.outputMeta strong {
+  font-size: 2rem;
+}
+
+.outputHelper {
+  font-size: 0.92rem;
+}
+
+.narrativeCard {
+  margin-top: 18px;
+  border-radius: 24px;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(255, 247, 238, 0.8), rgba(255, 255, 255, 0.84));
+}
+
+@media (max-width: 1100px) {
+  .hero,
+  .workspaceGrid,
+  .primaryResult {
+    grid-template-columns: 1fr;
+  }
+
+  .hero h1 {
+    max-width: 100%;
+  }
+
+  .resultPanel {
+    position: static;
+  }
+
+  .gauge {
+    width: min(220px, 100%);
+    margin: 0 auto;
+  }
+
+  .primaryResultText {
+    text-align: center;
+  }
+}
+
+@media (max-width: 720px) {
+  .pageShell {
+    width: min(100vw - 24px, 100%);
+    padding: 18px 0 28px;
+  }
+
+  .panelCard,
+  .metaBlock {
+    border-radius: 24px;
+    padding: 20px;
+  }
+
+  .heroMeta {
+    grid-template-columns: 1fr;
+  }
+
+  .choiceGrid,
+  .segmentedScale {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionHeader.compact {
+    grid-template-columns: 1fr;
+  }
+}
