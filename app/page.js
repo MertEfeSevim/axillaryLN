@@ -3,12 +3,6 @@
 import { startTransition, useDeferredValue, useState } from "react";
 import { defaultSelections, evaluateAxillaryModel, fuzzyModel } from "@/lib/fuzzy";
 
-const navigationItems = ["Panel", "Hasta Gecmisi", "Karar Kayitlari"];
-const totalRules =
-  fuzzyModel.nodalSystem.rules.length +
-  fuzzyModel.primarySystem.rules.length +
-  fuzzyModel.finalSystem.rules.length;
-
 const inputGroups = [
   {
     id: "nodal",
@@ -153,34 +147,6 @@ export default function HomePage() {
 
   return (
     <main className="dashboardPage">
-      <header className="topBar">
-        <div className="brandBlock">
-          <p className="brandEyebrow">Klinik karar destek arayuzu</p>
-          <div className="brandLockup">
-            <h1>Klinik Mimar | NodeInsight</h1>
-            <span>AxillaryLN Mamdani sistemi</span>
-          </div>
-        </div>
-
-        <nav className="topNav" aria-label="Ana sekmeler">
-          {navigationItems.map((item, index) => (
-            <button
-              type="button"
-              className={`navButton ${index === 0 ? "isActive" : ""}`}
-              key={item}
-            >
-              {item}
-            </button>
-          ))}
-        </nav>
-
-        <div className="topMeta">
-          <span className="metaPill">MOM</span>
-          <span className="metaPill">{totalRules} Kural</span>
-          <span className="metaPill isLive">Canli</span>
-        </div>
-      </header>
-
       <section className="headlineBand">
         <div className="headlineBandCopy">
           <span className="sectionEyebrow">Panel ozeti</span>

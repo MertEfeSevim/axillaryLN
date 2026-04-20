@@ -57,30 +57,16 @@ img {
   margin: 0 auto;
   padding: 12px 0 14px;
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto 1fr;
   gap: 14px;
 }
 
-.topBar,
 .headlineBand,
 .sectionCard,
 .resultStage,
 .insightCard {
   box-shadow: var(--shadow-soft);
 }
-
-.topBar {
-  display: grid;
-  grid-template-columns: minmax(320px, 1.25fr) auto auto;
-  gap: 18px;
-  align-items: center;
-  padding: 18px 26px;
-  border-radius: 34px;
-  background: rgba(255, 255, 255, 0.84);
-  backdrop-filter: blur(16px);
-}
-
-.brandEyebrow,
 .sectionEyebrow,
 .insightEyebrow {
   display: block;
@@ -92,7 +78,6 @@ img {
   text-transform: uppercase;
 }
 
-.brandLockup h1,
 .headlineBandCopy h2,
 .sectionHeader h2,
 .resultStageHeader h2,
@@ -103,78 +88,17 @@ img {
   letter-spacing: -0.03em;
 }
 
-.brandLockup h1 {
-  font-size: clamp(1.45rem, 2vw, 1.9rem);
-}
-
-.brandLockup span {
-  display: block;
-  margin-top: 8px;
-  color: var(--text-soft);
-  font-size: 0.94rem;
-}
-
-.topNav,
-.topMeta,
 .fieldStack,
 .insightGrid {
   display: grid;
   gap: 12px;
 }
 
-.topNav,
-.topMeta {
-  grid-auto-flow: column;
-  align-items: center;
-}
-
-.navButton,
-.metaPill,
 .resetButton,
 .decisionBadge,
 .choiceButton {
   border: 0;
   border-radius: 999px;
-}
-
-.navButton {
-  appearance: none;
-  padding: 11px 16px;
-  background: transparent;
-  color: var(--text-soft);
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    background 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.navButton:hover,
-.navButton.isActive {
-  background: var(--surface-soft);
-  color: var(--primary);
-}
-
-.navButton:hover {
-  transform: translateY(-1px);
-}
-
-.metaPill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 11px 15px;
-  background: var(--surface-soft);
-  color: var(--primary);
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.metaPill.isLive {
-  background: linear-gradient(135deg, rgba(33, 112, 228, 0.18), rgba(214, 227, 255, 0.92));
 }
 
 .headlineBand {
@@ -523,22 +447,15 @@ img {
   .dashboardPage {
     height: auto;
     min-height: 100vh;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto;
   }
 
-  .topBar,
   .headlineBand,
   .dashboardGrid,
   .compactHeader,
   .resultStageBody,
   .insightGrid {
     grid-template-columns: 1fr;
-  }
-
-  .topNav,
-  .topMeta {
-    grid-auto-flow: row;
-    justify-items: start;
   }
 
   .inputColumn,
@@ -554,7 +471,6 @@ img {
     gap: 10px;
   }
 
-  .topBar,
   .headlineBand,
   .sectionCard,
   .resultStage,
