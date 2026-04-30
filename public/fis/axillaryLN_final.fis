@@ -16,7 +16,7 @@ Name='nodal_in'
 Range=[0 1]
 NumMFs=3
 MF1='low':'trapmf',[0 0 0.25 0.5]
-MF2='intermediate':'trimf',[0.3 0.5 0.7]
+MF2='intermediate':'trimf',[0.25 0.5 0.75]
 MF3='high':'trapmf',[0.5 0.75 1 1]
 
 [Input2]
@@ -24,15 +24,15 @@ Name='primary_in'
 Range=[0 1]
 NumMFs=3
 MF1='low':'trapmf',[0 0 0.25 0.5]
-MF2='intermediate':'trimf',[0.3 0.5 0.7]
+MF2='intermediate':'trimf',[0.25 0.5 0.75]
 MF3='high':'trapmf',[0.5 0.75 1 1]
 
 [Output1]
 Name='axillary_involvement'
 Range=[0 1]
 NumMFs=2
-MF1='no':'trapmf',[0 0 0.35 0.6]
-MF2='yes':'trapmf',[0.4 0.65 1 1]
+MF1='no':'trapmf',[0 0 0.35 0.65]
+MF2='yes':'trapmf',[0.35 0.65 1 1]
 
 [Rules]
 1 1, 1 (1) : 1

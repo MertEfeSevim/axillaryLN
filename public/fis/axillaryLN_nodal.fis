@@ -1,5 +1,5 @@
 [System]
-Name='axillaryLN_nodalMorphology_v1'
+Name='axillaryLN_nodal'
 Type='mamdani'
 Version=2.0
 NumInputs=3
@@ -32,7 +32,7 @@ Name='nodal_shape'
 Range=[0 1]
 NumMFs=3
 MF1='oval':'trapmf',[0 0 0.45 0.65]
-MF2='intermediate':'trimf',[0.5 0.65 0.8]
+MF2='intermediate':'trimf',[0.45 0.65 0.85]
 MF3='round':'trapmf',[0.65 0.85 1 1]
 
 [Output1]
@@ -40,7 +40,7 @@ Name='nodal_suspicion'
 Range=[0 1]
 NumMFs=3
 MF1='low':'trapmf',[0 0 0.25 0.5]
-MF2='intermediate':'trimf',[0.3 0.5 0.7]
+MF2='intermediate':'trimf',[0.25 0.5 0.75]
 MF3='high':'trapmf',[0.5 0.75 1 1]
 
 [Rules]

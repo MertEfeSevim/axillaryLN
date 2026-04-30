@@ -1,9 +1,9 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Klinik Mimar | NodeInsight",
+  title: "axillaryLN Fuzzy Workspace",
   description:
-    "Meme MRG bulgularina gore aksiller lenf nodu tutulumunu bulanık mantik ile yorumlayan klinik karar paneli.",
+    "Verilen FIS ve MAT dosyalarina gore aksiller lenf nodu tutulumunu bulanık mantik ile hesaplayan referans calisma alani.",
 };
 
 export default function RootLayout({ children }) {
