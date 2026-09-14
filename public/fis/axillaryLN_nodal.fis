@@ -1,5 +1,5 @@
 [System]
-Name='axillaryLN_nodal'
+Name='axillaryLN_nodal_v3'
 Type='mamdani'
 Version=2.0
 NumInputs=3
@@ -9,15 +9,15 @@ AndMethod='min'
 OrMethod='max'
 ImpMethod='min'
 AggMethod='max'
-DefuzzMethod='mom'
+DefuzzMethod='centroid'
 
 [Input1]
 Name='cortical_thickness'
-Range=[0 8]
+Range=[0 20]
 NumMFs=3
 MF1='thin':'trapmf',[0 0 2 3]
 MF2='borderline':'trimf',[2 3 4]
-MF3='thick':'trapmf',[3 4 8 8]
+MF3='thick':'trapmf',[3 4 20 20]
 
 [Input2]
 Name='fatty_hilum_status'
@@ -28,46 +28,46 @@ MF2='faint':'trimf',[0.25 0.5 0.75]
 MF3='absent':'trapmf',[0.5 0.75 1 1]
 
 [Input3]
-Name='nodal_shape'
-Range=[0 1]
+Name='short_axis_mm'
+Range=[0 30]
 NumMFs=3
-MF1='oval':'trapmf',[0 0 0.45 0.65]
-MF2='intermediate':'trimf',[0.45 0.65 0.85]
-MF3='round':'trapmf',[0.65 0.85 1 1]
+MF1='small':'trapmf',[0 0 7 10]
+MF2='intermediate':'trimf',[7 10 13]
+MF3='large':'trapmf',[10 13 30 30]
 
 [Output1]
 Name='nodal_suspicion'
 Range=[0 1]
 NumMFs=3
-MF1='low':'trapmf',[0 0 0.25 0.5]
-MF2='intermediate':'trimf',[0.25 0.5 0.75]
-MF3='high':'trapmf',[0.5 0.75 1 1]
+MF1='low':'trapmf',[0 0 0.2 0.4]
+MF2='intermediate':'trimf',[0.3 0.5 0.7]
+MF3='high':'trapmf',[0.6 0.8 1 1]
 
 [Rules]
 1 1 1, 1 (1) : 1
-2 1 1, 1 (1) : 1
-3 1 1, 2 (1) : 1
-1 2 1, 1 (1) : 1
-2 2 1, 2 (1) : 1
-3 2 1, 2 (1) : 1
-1 3 1, 2 (1) : 1
-2 3 1, 2 (1) : 1
-3 3 1, 3 (1) : 1
 1 1 2, 1 (1) : 1
-2 1 2, 2 (1) : 1
-3 1 2, 2 (1) : 1
-1 2 2, 2 (1) : 1
-2 2 2, 2 (1) : 1
-3 2 2, 3 (1) : 1
-1 3 2, 2 (1) : 1
-2 3 2, 3 (1) : 1
-3 3 2, 3 (1) : 1
 1 1 3, 2 (1) : 1
-2 1 3, 2 (1) : 1
-3 1 3, 3 (1) : 1
+1 2 1, 1 (1) : 1
+1 2 2, 2 (1) : 1
 1 2 3, 2 (1) : 1
-2 2 3, 3 (1) : 1
-3 2 3, 3 (1) : 1
+1 3 1, 2 (1) : 1
+1 3 2, 2 (1) : 1
 1 3 3, 3 (1) : 1
+2 1 1, 1 (1) : 1
+2 1 2, 2 (1) : 1
+2 1 3, 2 (1) : 1
+2 2 1, 2 (1) : 1
+2 2 2, 2 (1) : 1
+2 2 3, 3 (1) : 1
+2 3 1, 2 (1) : 1
+2 3 2, 3 (1) : 1
 2 3 3, 3 (1) : 1
+3 1 1, 2 (1) : 1
+3 1 2, 2 (1) : 1
+3 1 3, 3 (1) : 1
+3 2 1, 2 (1) : 1
+3 2 2, 3 (1) : 1
+3 2 3, 3 (1) : 1
+3 3 1, 3 (1) : 1
+3 3 2, 3 (1) : 1
 3 3 3, 3 (1) : 1
