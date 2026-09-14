@@ -9,6 +9,10 @@ import {
   sanitizeNumericSelection,
 } from "@/lib/fuzzy";
 
+const PASSCODE = "1001";
+const UNLOCK_KEY = "axillaryLN.unlocked";
+const ARCHIVE_KEY = "axillaryLN.archive";
+
 const GROUP_TITLES = {
   nodalSystem: "lenf nodu",
   primarySystem: "primer tumor",
@@ -18,11 +22,66 @@ function formatMembershipShape(membershipFunction) {
   return `${membershipFunction.type} [${membershipFunction.params.join(", ")}]`;
 }
 
-function Info({ label, align = "start", below = false, children }) {
+function formatSavedAt(isoDate) {
+  const date = new Date(isoDate);
+  const pad = (value) => String(value).padStart(2, "0");
+
+  return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()} ${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
+}
+
+function readArchive() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(ARCHIVE_KEY) || "[]");
+    return Array.isArray(stored) ? stored : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeArchive(entries) {
+  try {
+    window.localStorage.setItem(ARCHIVE_KEY, JSON.stringify(entries));
+  } catch {
+    // depolama kapali olabilir; liste yine de oturum boyunca calisir
+  }
+}
+
+function buildEntry(model, selections, results) {
+  const inputs = [...model.nodalSystem.inputs, ...model.primarySystem.inputs].map((input) => ({
+    name: input.name,
+    value:
+      input.mode === "numeric"
+        ? `${sanitizeNumericSelection(input, selections[input.id])}${
+            input.unit ? ` ${input.unit}` : ""
+          }`
+        : selections[input.id],
+  }));
+
+  const asScore = (result) => ({
+    name: result.outputName,
+    value: result.displayValue,
+    level: result.category,
+    levelLabel: result.categoryLabel,
+  });
+
+  return {
+    id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    savedAt: new Date().toISOString(),
+    inputs,
+    nodal: asScore(results.nodalResult),
+    primary: asScore(results.primaryResult),
+    final: asScore(results.finalResult),
+    positive: results.decision.isPositive,
+  };
+}
+
+function Info({ label, align = "start", below = false, sheet = false, children }) {
   return (
     <button
       type="button"
-      className={`info info--${align}${below ? " info--below" : ""}`}
+      className={`info info--${align}${below ? " info--below" : ""}${sheet ? " info--sheet" : ""}`}
       aria-label={label}
       onClick={(event) => event.preventDefault()}
     >
@@ -45,6 +104,51 @@ function MembershipTip({ input }) {
         </span>
       ))}
     </>
+  );
+}
+
+function Gate({ onUnlock }) {
+  const [code, setCode] = useState("");
+  const [failed, setFailed] = useState(false);
+
+  function submit(event) {
+    event.preventDefault();
+
+    if (code === PASSCODE) {
+      onUnlock();
+      return;
+    }
+
+    setFailed(true);
+    setCode("");
+  }
+
+  return (
+    <main className="page gatePage">
+      <form className="gate" onSubmit={submit}>
+        <h1>axillaryLN</h1>
+        <p>erisim kodu</p>
+        <input
+          type="password"
+          inputMode="numeric"
+          autoComplete="off"
+          autoFocus
+          aria-label="erisim kodu"
+          aria-invalid={failed}
+          value={code}
+          onChange={(event) => {
+            setCode(event.target.value);
+            setFailed(false);
+          }}
+        />
+        <button type="submit" className="primaryBtn">
+          gir
+        </button>
+        <span className="gateNote" data-error={failed}>
+          {failed ? "kod hatali" : " "}
+        </span>
+      </form>
+    </main>
   );
 }
 
@@ -103,10 +207,67 @@ function SubScore({ result }) {
   );
 }
 
+function ArchiveRow({ entry, onRemove }) {
+  return (
+    <li className="archiveRow">
+      <span className="archiveWhen">{formatSavedAt(entry.savedAt)}</span>
+      <strong className="archiveScore">{entry.final.value}</strong>
+      <span className="level" data-level={entry.final.level}>
+        {entry.final.levelLabel}
+      </span>
+      <span className="verdict" data-positive={entry.positive}>
+        {entry.positive ? "pozitif" : "negatif"}
+      </span>
+      <Info label="kayit detayi" sheet>
+        <b>{formatSavedAt(entry.savedAt)}</b>
+        {entry.inputs.map((input) => (
+          <span className="tipRow" key={input.name}>
+            {input.name}
+            <code>{input.value}</code>
+          </span>
+        ))}
+        {[entry.nodal, entry.primary].map((score) => (
+          <span className="tipRow" key={score.name}>
+            {score.name}
+            <code>
+              {score.value} {score.levelLabel}
+            </code>
+          </span>
+        ))}
+      </Info>
+      <button
+        type="button"
+        className="rowDel"
+        aria-label="kaydi sil"
+        onClick={() => onRemove(entry.id)}
+      >
+        &times;
+      </button>
+    </li>
+  );
+}
+
 export default function HomePage() {
+  const [booted, setBooted] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
+  const [view, setView] = useState("calc");
+  const [archive, setArchive] = useState([]);
+  const [justSaved, setJustSaved] = useState(false);
+
   const [model, setModel] = useState(null);
   const [selections, setSelections] = useState(null);
   const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    try {
+      setUnlocked(window.sessionStorage.getItem(UNLOCK_KEY) === "1");
+    } catch {
+      // oturum depolamasi yoksa kilitli baslar
+    }
+
+    setArchive(readArchive());
+    setBooted(true);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -133,9 +294,28 @@ export default function HomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!justSaved) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => setJustSaved(false), 1600);
+    return () => clearTimeout(timer);
+  }, [justSaved]);
+
   const deferredSelections = useDeferredValue(selections);
   const results =
     model && deferredSelections ? evaluateAxillaryModel(model, deferredSelections) : null;
+
+  function unlock() {
+    try {
+      window.sessionStorage.setItem(UNLOCK_KEY, "1");
+    } catch {
+      // depolama kapaliysa kilit sadece bu sayfa icin acilir
+    }
+
+    setUnlocked(true);
+  }
 
   function selectValue(inputId, nextValue) {
     startTransition(() => {
@@ -177,6 +357,31 @@ export default function HomePage() {
     });
   }
 
+  function saveEntry() {
+    if (!model || !selections || !results) {
+      return;
+    }
+
+    const next = [buildEntry(model, selections, results), ...archive];
+    setArchive(next);
+    writeArchive(next);
+    setJustSaved(true);
+  }
+
+  function removeEntry(entryId) {
+    const next = archive.filter((entry) => entry.id !== entryId);
+    setArchive(next);
+    writeArchive(next);
+  }
+
+  if (!booted) {
+    return <main className="page" />;
+  }
+
+  if (!unlocked) {
+    return <Gate onUnlock={unlock} />;
+  }
+
   if (loadError) {
     return (
       <main className="page">
@@ -209,105 +414,136 @@ export default function HomePage() {
           <p>aksiller lenf nodu tutulumu &middot; bulanik cikarim</p>
         </div>
 
-        <div className="topbarActions">
-          <Info label="Model hakkinda" align="end" below>
-            <b>Uc asamali Mamdani modeli</b>
-            <span>
-              Lenf nodu ve primer tumor sistemleri bagimsiz birer skor uretir; bu iki
-              skor final sisteme girdi olur.
-            </span>
-            <span>
-              Durulastirma <code>centroid</code>, cikis <code>0-1</code> araliginda
-              sureklidir ve <code>{threshold.toFixed(2)}</code> ve uzeri pozitif kabul
-              edilir.
-            </span>
-          </Info>
-          <button type="button" className="ghostBtn" onClick={resetSelections}>
-            sifirla
-          </button>
-        </div>
+        {view === "calc" ? (
+          <div className="topbarActions">
+            <Info label="Model hakkinda" align="end" below>
+              <b>Uc asamali Mamdani modeli</b>
+              <span>
+                Lenf nodu ve primer tumor sistemleri bagimsiz birer skor uretir; bu iki
+                skor final sisteme girdi olur.
+              </span>
+              <span>
+                Durulastirma <code>centroid</code>, cikis <code>0-1</code> araliginda
+                sureklidir ve <code>{threshold.toFixed(2)}</code> ve uzeri pozitif kabul
+                edilir.
+              </span>
+            </Info>
+            <button type="button" className="ghostBtn" onClick={resetSelections}>
+              sifirla
+            </button>
+            <button type="button" className="ghostBtn" onClick={() => setView("archive")}>
+              arsiv{archive.length ? ` (${archive.length})` : ""}
+            </button>
+            <button type="button" className="primaryBtn" onClick={saveEntry}>
+              {justSaved ? "kaydedildi" : "kaydet"}
+            </button>
+          </div>
+        ) : (
+          <div className="topbarActions">
+            <button type="button" className="ghostBtn" onClick={() => setView("calc")}>
+              hesaplamaya don
+            </button>
+          </div>
+        )}
       </header>
 
-      <div className="layout">
-        <div className="inputs">
-          {["nodalSystem", "primarySystem"].map((systemId) => {
-            const system = model[systemId];
-
-            return (
-              <section className="group" key={systemId}>
-                <div className="groupHead">
-                  <h2>{GROUP_TITLES[systemId]}</h2>
-                  <Info label={`${system.fileName} detaylari`}>
-                    <b>{system.fileName}</b>
-                    <span className="tipRow">
-                      kural sayisi<code>{system.rules.length}</code>
-                    </span>
-                    <span className="tipRow">
-                      durulastirma<code>{system.defuzzMethod}</code>
-                    </span>
-                    <span className="tipRow">
-                      cikis<code>{system.output.name}</code>
-                    </span>
-                  </Info>
-                </div>
-
-                {system.inputs.map((input) => (
-                  <Field
-                    key={input.id}
-                    input={input}
-                    value={selections[input.id]}
-                    onSelect={(nextValue) => selectValue(input.id, nextValue)}
-                    onNumericBlur={() => normalizeNumericSelection(input)}
-                  />
-                ))}
-              </section>
-            );
-          })}
-        </div>
-
-        <section className="result">
-          <div className="resultHead">
-            <span className="resultName">
-              {finalResult.outputName}
-              <Info label="Sonuc nasil hesaplanir" align="end" below>
-                <b>Nasil hesaplanir</b>
-                <span>
-                  <code>{nodalResult.outputName}</code> ve{" "}
-                  <code>{primaryResult.outputName}</code> crisp degerleri{" "}
-                  <code>{model.finalSystem.fileName}</code> icine verilir.
-                </span>
-                <span>
-                  Seviye en yuksek uyelik derecesinden, karar ise sabit{" "}
-                  <code>{threshold.toFixed(2)}</code> esiginden gelir; ikisi
-                  0.60-0.65 bandinda ayrisabilir.
-                </span>
-              </Info>
-            </span>
-            <span className="verdict" data-positive={decision.isPositive}>
-              {decision.isPositive ? "pozitif" : "negatif"}
-            </span>
+      {view === "archive" ? (
+        <section className="archive">
+          <div className="archiveHead">
+            <h2>arsiv</h2>
+            <span>{archive.length} kayit</span>
           </div>
 
-          <div>
+          {archive.length === 0 ? (
+            <p className="notice">henuz kayit yok</p>
+          ) : (
+            <ul className="archiveList">
+              {archive.map((entry) => (
+                <ArchiveRow key={entry.id} entry={entry} onRemove={removeEntry} />
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : (
+        <div className="layout">
+          <div className="inputs">
+            {["nodalSystem", "primarySystem"].map((systemId) => {
+              const system = model[systemId];
+
+              return (
+                <section className="group" key={systemId}>
+                  <div className="groupHead">
+                    <h2>{GROUP_TITLES[systemId]}</h2>
+                    <Info label={`${system.fileName} detaylari`}>
+                      <b>{system.fileName}</b>
+                      <span className="tipRow">
+                        kural sayisi<code>{system.rules.length}</code>
+                      </span>
+                      <span className="tipRow">
+                        durulastirma<code>{system.defuzzMethod}</code>
+                      </span>
+                      <span className="tipRow">
+                        cikis<code>{system.output.name}</code>
+                      </span>
+                    </Info>
+                  </div>
+
+                  {system.inputs.map((input) => (
+                    <Field
+                      key={input.id}
+                      input={input}
+                      value={selections[input.id]}
+                      onSelect={(nextValue) => selectValue(input.id, nextValue)}
+                      onNumericBlur={() => normalizeNumericSelection(input)}
+                    />
+                  ))}
+                </section>
+              );
+            })}
+          </div>
+
+          <section className="result">
+            <div className="resultHead">
+              <span className="resultName">
+                {finalResult.outputName}
+                <Info label="Sonuc nasil hesaplanir" align="end" below>
+                  <b>Nasil hesaplanir</b>
+                  <span>
+                    <code>{nodalResult.outputName}</code> ve{" "}
+                    <code>{primaryResult.outputName}</code> crisp degerleri{" "}
+                    <code>{model.finalSystem.fileName}</code> icine verilir.
+                  </span>
+                  <span>
+                    Seviye en yuksek uyelik derecesinden, karar ise sabit{" "}
+                    <code>{threshold.toFixed(2)}</code> esiginden gelir; ikisi
+                    0.60-0.65 bandinda ayrisabilir.
+                  </span>
+                </Info>
+              </span>
+              <span className="verdict" data-positive={decision.isPositive}>
+                {decision.isPositive ? "pozitif" : "negatif"}
+              </span>
+            </div>
+
             <div className="score">
               <span className="scoreNum">{finalResult.displayValue}</span>
               <span className="level" data-level={finalResult.category}>
                 {finalResult.categoryLabel}
               </span>
             </div>
-          </div>
 
-          <div className="gauge" data-positive={decision.isPositive}>
-            <span className="gaugeFill" style={{ width: `${toPercent(finalResult.crisp)}%` }} />
-            <span className="gaugeMark" style={{ left: `${toPercent(threshold)}%` }} />
-          </div>
+            <div className="gauge" data-positive={decision.isPositive}>
+              <span className="gaugeFill" style={{ width: `${toPercent(finalResult.crisp)}%` }} />
+              <span className="gaugeMark" style={{ left: `${toPercent(threshold)}%` }} />
+            </div>
 
-          <div className="subs">
-            <SubScore result={nodalResult} />
-            <SubScore result={primaryResult} />
-          </div>
-        </section>
-      </div>
+            <div className="subs">
+              <SubScore result={nodalResult} />
+              <SubScore result={primaryResult} />
+            </div>
+          </section>
+        </div>
+      )}
 
       <footer className="sources">
         <b>kaynak</b>
