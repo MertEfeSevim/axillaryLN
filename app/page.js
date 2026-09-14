@@ -9,137 +9,97 @@ import {
   sanitizeNumericSelection,
 } from "@/lib/fuzzy";
 
-const outputConfig = fuzzyUiConfig.resultTones;
-
-function formatRange(range, unit) {
-  return `${range[0]}-${range[1]}${unit ? ` ${unit}` : ""}`;
-}
+const GROUP_TITLES = {
+  nodalSystem: "lenf nodu",
+  primarySystem: "primer tumor",
+};
 
 function formatMembershipShape(membershipFunction) {
   return `${membershipFunction.type} [${membershipFunction.params.join(", ")}]`;
 }
 
-function FileChip({ file }) {
+function Info({ label, align = "start", below = false, children }) {
   return (
-    <a className="sourceLink" href={file.url} target="_blank" rel="noreferrer">
-      <span>{file.fileName}</span>
-      <small>{file.type}</small>
-    </a>
-  );
-}
-
-function NumericField({ input, value, onChange, onBlur }) {
-  return (
-    <div className="numericInputWrap">
-      <input
-        className="numericInput"
-        type="number"
-        inputMode="decimal"
-        min={input.range[0]}
-        max={input.range[1]}
-        step={input.step || "any"}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onBlur={onBlur}
-      />
-      <span className="modeBadge">numeric</span>
-    </div>
-  );
-}
-
-function CategoricalField({ input, value, onChange }) {
-  return (
-    <div
-      className="choiceGrid"
-      style={{
-        gridTemplateColumns: `repeat(${input.membershipFunctions.length}, minmax(0, 1fr))`,
-      }}
+    <button
+      type="button"
+      className={`info info--${align}${below ? " info--below" : ""}`}
+      aria-label={label}
+      onClick={(event) => event.preventDefault()}
     >
-      {input.membershipFunctions.map((membershipFunction) => {
-        const isActive = value === membershipFunction.key;
-
-        return (
-          <button
-            type="button"
-            key={membershipFunction.key}
-            className={`choiceButton ${isActive ? "choiceButtonActive" : ""}`}
-            aria-pressed={isActive}
-            onClick={() => onChange(membershipFunction.key)}
-          >
-            <span className="choiceTitle">{membershipFunction.label}</span>
-            <span className="choiceMeta">{formatMembershipShape(membershipFunction)}</span>
-          </button>
-        );
-      })}
-    </div>
+      i<span className="tip">{children}</span>
+    </button>
   );
 }
 
-function InputField({ input, value, onCategoricalChange, onNumericChange, onNumericBlur }) {
+function MembershipTip({ input }) {
   return (
-    <div className="fieldRow">
-      <div className="fieldHeader">
-        <div>
-          <h3>{input.name}</h3>
-          <p className="fieldSubline">{formatRange(input.range, input.unit)}</p>
-        </div>
-        <span className="fieldType">{input.mode}</span>
+    <>
+      <b>
+        {input.name} &middot; {input.range[0]}-{input.range[1]}
+        {input.unit ? ` ${input.unit}` : ""}
+      </b>
+      {input.membershipFunctions.map((membershipFunction) => (
+        <span className="tipRow" key={membershipFunction.key}>
+          {membershipFunction.label}
+          <code>{formatMembershipShape(membershipFunction)}</code>
+        </span>
+      ))}
+    </>
+  );
+}
+
+function Field({ input, value, onSelect, onNumericBlur }) {
+  return (
+    <div className="field">
+      <div className="fieldName">
+        <span>{input.name}</span>
+        <Info label={`${input.name} uyelik fonksiyonlari`}>
+          <MembershipTip input={input} />
+        </Info>
       </div>
 
       {input.mode === "numeric" ? (
-        <NumericField
-          input={input}
-          value={value}
-          onChange={onNumericChange}
-          onBlur={onNumericBlur}
-        />
+        <div className="num">
+          <input
+            type="number"
+            inputMode="decimal"
+            min={input.range[0]}
+            max={input.range[1]}
+            step={input.step || "any"}
+            value={value}
+            onChange={(event) => onSelect(event.target.value)}
+            onBlur={onNumericBlur}
+          />
+          <em>{input.unit}</em>
+        </div>
       ) : (
-        <CategoricalField input={input} value={value} onChange={onCategoricalChange} />
+        <div className="seg">
+          {input.membershipFunctions.map((membershipFunction) => (
+            <button
+              type="button"
+              key={membershipFunction.key}
+              className="segBtn"
+              aria-pressed={value === membershipFunction.key}
+              onClick={() => onSelect(membershipFunction.key)}
+            >
+              {membershipFunction.label}
+            </button>
+          ))}
+        </div>
       )}
-
-      <div className="membershipStrip">
-        {input.membershipFunctions.map((membershipFunction) => (
-          <span className="membershipPill" key={membershipFunction.key}>
-            {membershipFunction.label}: {formatMembershipShape(membershipFunction)}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
 
-function MetricFrame({ result }) {
-  const tone = outputConfig[result.category] || "cool";
-
+function SubScore({ result }) {
   return (
-    <div className={`metricFrame tone-${tone}`}>
-      <span className="metricLabel">{result.outputName}</span>
-      <strong className="metricValue">{result.displayValue}</strong>
-      <span className="metricRange">
-        range {result.range[0]}-{result.range[1]}
-      </span>
+    <div className="sub">
+      <span>{result.outputName}</span>
+      <strong>{result.displayValue}</strong>
+      <em className="level" data-level={result.category}>
+        {result.categoryLabel}
+      </em>
     </div>
-  );
-}
-
-function InsightCard({ title, result, helper }) {
-  const tone = outputConfig[result.category] || "cool";
-
-  return (
-    <article className={`insightCard tone-${tone}`}>
-      <p className="insightEyebrow">{title}</p>
-      <div className="insightHeadline">
-        <div>
-          <h3>{result.categoryLabel}</h3>
-          <p className="insightOutputName">{result.outputName}</p>
-        </div>
-        <div className="insightScore">
-          <strong>{result.displayValue}</strong>
-          <span>0-1 crisp</span>
-        </div>
-      </div>
-      <p className="insightBody">{helper}</p>
-    </article>
   );
 }
 
@@ -177,31 +137,16 @@ export default function HomePage() {
   const results =
     model && deferredSelections ? evaluateAxillaryModel(model, deferredSelections) : null;
 
-  function updateCategoricalSelection(inputId, optionKey) {
+  function selectValue(inputId, nextValue) {
     startTransition(() => {
       setSelections((current) => {
-        if (!current || current[inputId] === optionKey) {
+        if (!current || current[inputId] === nextValue) {
           return current;
         }
 
         return {
           ...current,
-          [inputId]: optionKey,
-        };
-      });
-    });
-  }
-
-  function updateNumericSelection(inputId, rawValue) {
-    startTransition(() => {
-      setSelections((current) => {
-        if (!current) {
-          return current;
-        }
-
-        return {
-          ...current,
-          [inputId]: rawValue,
+          [inputId]: nextValue,
         };
       });
     });
@@ -234,151 +179,144 @@ export default function HomePage() {
 
   if (loadError) {
     return (
-      <main className="dashboardPage">
-        <section className="headlineBand singlePanel">
-          <div className="headlineBandCopy">
-            <span className="sectionEyebrow">Load error</span>
-            <h2>FIS dosyalari okunamadi</h2>
-            <p>{loadError}</p>
-          </div>
-        </section>
+      <main className="page">
+        <p className="notice">
+          <b>FIS dosyalari okunamadi</b>
+          {loadError}
+        </p>
       </main>
     );
   }
 
   if (!model || !selections || !results) {
     return (
-      <main className="dashboardPage">
-        <section className="headlineBand singlePanel">
-          <div className="headlineBandCopy">
-            <span className="sectionEyebrow">Workspace load</span>
-            <h2>axillaryLN modelleri yukleniyor</h2>
-            <p>
-              `axillaryLN_nodal.fis`, `axillaryLN_primary.fis`, `axillaryLN_final.fis`
-              ve referans `.mat` dosyalari okunuyor.
-            </p>
-          </div>
-        </section>
+      <main className="page">
+        <p className="notice">modeller yukleniyor</p>
       </main>
     );
   }
 
-  const inputGroups = [
-    {
-      id: "nodal",
-      eyebrow: model.nodalSystem.fileName,
-      title: model.nodalSystem.name,
-      description:
-        "Bu panel dogrudan axillaryLN_nodal.fis icindeki input adlari, range degerleri ve MF tanimlari ile calisir.",
-      inputs: model.nodalSystem.inputs,
-    },
-    {
-      id: "primary",
-      eyebrow: model.primarySystem.fileName,
-      title: model.primarySystem.name,
-      description:
-        "Bu panel dogrudan axillaryLN_primary.fis icindeki input adlari, range degerleri ve MF tanimlari ile calisir.",
-      inputs: model.primarySystem.inputs,
-    },
-  ];
+  const { finalResult, nodalResult, primaryResult, decision } = results;
+  const threshold = decision.threshold;
+  const toPercent = (value) =>
+    ((value - finalResult.range[0]) / (finalResult.range[1] - finalResult.range[0])) * 100;
 
   return (
-    <main className="dashboardPage">
-      <section className="headlineBand">
-        <div className="headlineBandCopy">
-          <span className="sectionEyebrow">FIS workspace</span>
-          <h2>axillaryLN fuzzy systems</h2>
-          <p>
-            Veri girisi ve cikisi, verilen `.fis` ve `.mat` dosyalarindaki tanimlara
-            gore yeniden kuruldu. `cortical_thickness` ve `tumor_size_mm` numerik
-            giris alir; diger alanlar ilgili membership label&apos;lari ile kategorik
-            calisir. Tum cikislar 0-1 araligindaki ham crisp deger olarak gosterilir.
-          </p>
-
-          <div className="sourceList">
-            {fuzzyUiConfig.referenceFiles.map((file) => (
-              <FileChip key={file.fileName} file={file} />
-            ))}
-          </div>
+    <main className="page">
+      <header className="topbar">
+        <div className="brand">
+          <h1>axillaryLN</h1>
+          <p>aksiller lenf nodu tutulumu &middot; bulanik cikarim</p>
         </div>
 
-        <button type="button" className="resetButton headlineReset" onClick={resetSelections}>
-          Varsayilanlari yukle
-        </button>
-      </section>
+        <div className="topbarActions">
+          <Info label="Model hakkinda" align="end" below>
+            <b>Uc asamali Mamdani modeli</b>
+            <span>
+              Lenf nodu ve primer tumor sistemleri bagimsiz birer skor uretir; bu iki
+              skor final sisteme girdi olur.
+            </span>
+            <span>
+              Durulastirma <code>centroid</code>, cikis <code>0-1</code> araliginda
+              sureklidir ve <code>{threshold.toFixed(2)}</code> ve uzeri pozitif kabul
+              edilir.
+            </span>
+          </Info>
+          <button type="button" className="ghostBtn" onClick={resetSelections}>
+            sifirla
+          </button>
+        </div>
+      </header>
 
-      <section className="dashboardGrid">
-        <div className="inputColumn">
-          {inputGroups.map((group) => (
-            <article className="sectionCard" key={group.id}>
-              <div className="sectionHeader compactHeader">
-                <div>
-                  <span className="sectionEyebrow">{group.eyebrow}</span>
-                  <h2>{group.title}</h2>
+      <div className="layout">
+        <div className="inputs">
+          {["nodalSystem", "primarySystem"].map((systemId) => {
+            const system = model[systemId];
+
+            return (
+              <section className="group" key={systemId}>
+                <div className="groupHead">
+                  <h2>{GROUP_TITLES[systemId]}</h2>
+                  <Info label={`${system.fileName} detaylari`}>
+                    <b>{system.fileName}</b>
+                    <span className="tipRow">
+                      kural sayisi<code>{system.rules.length}</code>
+                    </span>
+                    <span className="tipRow">
+                      durulastirma<code>{system.defuzzMethod}</code>
+                    </span>
+                    <span className="tipRow">
+                      cikis<code>{system.output.name}</code>
+                    </span>
+                  </Info>
                 </div>
-                <p>{group.description}</p>
-              </div>
 
-              <div className="fieldStack">
-                {group.inputs.map((input) => (
-                  <InputField
+                {system.inputs.map((input) => (
+                  <Field
                     key={input.id}
                     input={input}
                     value={selections[input.id]}
-                    onCategoricalChange={(optionKey) =>
-                      updateCategoricalSelection(input.id, optionKey)
-                    }
-                    onNumericChange={(rawValue) => updateNumericSelection(input.id, rawValue)}
+                    onSelect={(nextValue) => selectValue(input.id, nextValue)}
                     onNumericBlur={() => normalizeNumericSelection(input)}
                   />
                 ))}
-              </div>
-            </article>
-          ))}
+              </section>
+            );
+          })}
         </div>
 
-        <aside className="insightColumn">
-          <article className="resultStage">
-            <div className="resultStageHeader">
-              <div>
-                <span className="sectionEyebrow">{model.finalSystem.fileName}</span>
-                <h2>{results.finalResult.outputName}</h2>
-              </div>
-              <span
-                className={`decisionBadge tone-${outputConfig[results.finalResult.category] || "cool"}`}
-              >
-                {results.finalResult.categoryLabel}
+        <section className="result">
+          <div className="resultHead">
+            <span className="resultName">
+              {finalResult.outputName}
+              <Info label="Sonuc nasil hesaplanir" align="end" below>
+                <b>Nasil hesaplanir</b>
+                <span>
+                  <code>{nodalResult.outputName}</code> ve{" "}
+                  <code>{primaryResult.outputName}</code> crisp degerleri{" "}
+                  <code>{model.finalSystem.fileName}</code> icine verilir.
+                </span>
+                <span>
+                  Seviye en yuksek uyelik derecesinden, karar ise sabit{" "}
+                  <code>{threshold.toFixed(2)}</code> esiginden gelir; ikisi
+                  0.60-0.65 bandinda ayrisabilir.
+                </span>
+              </Info>
+            </span>
+            <span className="verdict" data-positive={decision.isPositive}>
+              {decision.isPositive ? "pozitif" : "negatif"}
+            </span>
+          </div>
+
+          <div>
+            <div className="score">
+              <span className="scoreNum">{finalResult.displayValue}</span>
+              <span className="level" data-level={finalResult.category}>
+                {finalResult.categoryLabel}
               </span>
             </div>
-
-            <div className="resultStageBody">
-              <MetricFrame result={results.finalResult} />
-
-              <div className="decisionStack">
-                <h3>{results.finalResult.categoryLabel}</h3>
-                <p>
-                  Final cikis, `nodal_suspicion` ve `primary_tumor_risk` crisp
-                  degerlerinin `axillaryLN_final.fis` icine verilmesiyle hesaplanir.
-                </p>
-                <p className="decisionNarrative">{results.narrative}</p>
-              </div>
-            </div>
-          </article>
-
-          <div className="insightGrid">
-            <InsightCard
-              title={model.nodalSystem.fileName}
-              result={results.nodalResult}
-              helper="Ara cikis dogrudan axillaryLN_nodal.fis defuzz sonucudur."
-            />
-            <InsightCard
-              title={model.primarySystem.fileName}
-              result={results.primaryResult}
-              helper="Ara cikis dogrudan axillaryLN_primary.fis defuzz sonucudur."
-            />
           </div>
-        </aside>
-      </section>
+
+          <div className="gauge" data-positive={decision.isPositive}>
+            <span className="gaugeFill" style={{ width: `${toPercent(finalResult.crisp)}%` }} />
+            <span className="gaugeMark" style={{ left: `${toPercent(threshold)}%` }} />
+          </div>
+
+          <div className="subs">
+            <SubScore result={nodalResult} />
+            <SubScore result={primaryResult} />
+          </div>
+        </section>
+      </div>
+
+      <footer className="sources">
+        <b>kaynak</b>
+        {fuzzyUiConfig.referenceFiles.map((file) => (
+          <a key={file.fileName} href={file.url} target="_blank" rel="noreferrer">
+            {file.fileName}
+          </a>
+        ))}
+      </footer>
     </main>
   );
 }
