@@ -1,6 +1,13 @@
 "use client";
 
-import { startTransition, useDeferredValue, useEffect, useState } from "react";
+import {
+  Fragment,
+  startTransition,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   createDefaultSelections,
   evaluateAxillaryModel,
@@ -8,13 +15,17 @@ import {
   loadFuzzyModel,
   sanitizeNumericSelection,
 } from "@/lib/fuzzy";
+import {
+  DEFAULT_LANGUAGE,
+  LANGUAGES,
+  createTranslator,
+  readStoredLanguage,
+  storeLanguage,
+} from "@/lib/i18n";
 
 const ARCHIVE_KEY = "axillaryLN.archive";
 
-const GROUP_TITLES = {
-  nodalSystem: "lenf nodu",
-  primarySystem: "primer tumor",
-};
+const SYSTEM_IDS = ["nodalSystem", "primarySystem"];
 
 function formatMembershipShape(membershipFunction) {
   return `${membershipFunction.type} [${membershipFunction.params.join(", ")}]`;
@@ -46,14 +57,16 @@ function writeArchive(entries) {
   }
 }
 
+// Kayitlar dilden bagimsiz tutulur: degisken adi yerine FIS anahtari, etiket
+// yerine uyelik anahtari saklanir; boylece arsiv secili dilde okunur.
 function buildEntry(model, selections, results) {
   const inputs = [...model.nodalSystem.inputs, ...model.primarySystem.inputs].map((input) => ({
-    name: input.name,
+    name: input.id,
+    mode: input.mode,
+    unit: input.unit,
     value:
       input.mode === "numeric"
-        ? `${sanitizeNumericSelection(input, selections[input.id])}${
-            input.unit ? ` ${input.unit}` : ""
-          }`
+        ? sanitizeNumericSelection(input, selections[input.id])
         : selections[input.id],
   }));
 
@@ -61,7 +74,6 @@ function buildEntry(model, selections, results) {
     name: result.outputName,
     value: result.displayValue,
     level: result.category,
-    levelLabel: result.categoryLabel,
   });
 
   return {
@@ -73,6 +85,26 @@ function buildEntry(model, selections, results) {
     final: asScore(results.finalResult),
     positive: results.decision.isPositive,
   };
+}
+
+function archiveInputValue(t, input) {
+  if (input.mode === "numeric") {
+    return input.unit ? `${input.value} ${input.unit}` : input.value;
+  }
+
+  // Eski kayitlarda mod saklanmadi; sayisal degerler zaten birimiyle yazilmisti
+  // ve bilinmeyen anahtar cevirmenden oldugu gibi geri doner.
+  return t.term(input.name, input.value);
+}
+
+function RichText({ parts }) {
+  return parts.map((part, index) =>
+    typeof part === "string" ? (
+      <Fragment key={index}>{part}</Fragment>
+    ) : (
+      <code key={index}>{part.code}</code>
+    ),
+  );
 }
 
 function Info({ label, align = "start", below = false, sheet = false, children }) {
@@ -88,16 +120,39 @@ function Info({ label, align = "start", below = false, sheet = false, children }
   );
 }
 
-function MembershipTip({ input }) {
+function LanguageSwitch({ language, t, onSelect }) {
+  return (
+    <div className="seg seg--lang" role="group" aria-label={t.ui.languageLabel}>
+      {LANGUAGES.map((option) => (
+        <button
+          type="button"
+          key={option.code}
+          className="segBtn"
+          aria-pressed={language === option.code}
+          aria-label={option.name}
+          onClick={() => onSelect(option.code)}
+        >
+          {option.short}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MembershipTip({ input, t }) {
   return (
     <>
       <b>
-        {input.name} &middot; {input.range[0]}-{input.range[1]}
+        {t.variable(input.id)} &middot; {input.range[0]}-{input.range[1]}
         {input.unit ? ` ${input.unit}` : ""}
       </b>
+      <span className="tipRow">
+        {t.ui.variable}
+        <code>{input.id}</code>
+      </span>
       {input.membershipFunctions.map((membershipFunction) => (
         <span className="tipRow" key={membershipFunction.key}>
-          {membershipFunction.label}
+          {t.term(input.id, membershipFunction.key)}
           <code>{formatMembershipShape(membershipFunction)}</code>
         </span>
       ))}
@@ -105,13 +160,15 @@ function MembershipTip({ input }) {
   );
 }
 
-function Field({ input, value, onSelect, onNumericBlur }) {
+function Field({ input, value, t, onSelect, onNumericBlur }) {
+  const name = t.variable(input.id);
+
   return (
     <div className="field">
       <div className="fieldName">
-        <span>{input.name}</span>
-        <Info label={`${input.name} uyelik fonksiyonlari`}>
-          <MembershipTip input={input} />
+        <span>{name}</span>
+        <Info label={t.ui.membershipInfoLabel(name)}>
+          <MembershipTip input={input} t={t} />
         </Info>
       </div>
 
@@ -139,7 +196,7 @@ function Field({ input, value, onSelect, onNumericBlur }) {
               aria-pressed={value === membershipFunction.key}
               onClick={() => onSelect(membershipFunction.key)}
             >
-              {membershipFunction.label}
+              {t.term(input.id, membershipFunction.key)}
             </button>
           ))}
         </div>
@@ -148,42 +205,42 @@ function Field({ input, value, onSelect, onNumericBlur }) {
   );
 }
 
-function SubScore({ result }) {
+function SubScore({ result, t }) {
   return (
     <div className="sub">
-      <span>{result.outputName}</span>
+      <span>{t.variable(result.outputName)}</span>
       <strong>{result.displayValue}</strong>
       <em className="level" data-level={result.category}>
-        {result.categoryLabel}
+        {t.level(result.category)}
       </em>
     </div>
   );
 }
 
-function ArchiveRow({ entry, onRemove }) {
+function ArchiveRow({ entry, t, onRemove }) {
   return (
     <li className="archiveRow">
       <span className="archiveWhen">{formatSavedAt(entry.savedAt)}</span>
       <strong className="archiveScore">{entry.final.value}</strong>
       <span className="level" data-level={entry.final.level}>
-        {entry.final.levelLabel}
+        {t.level(entry.final.level)}
       </span>
       <span className="verdict" data-positive={entry.positive}>
-        {entry.positive ? "pozitif" : "negatif"}
+        {t.verdict(entry.positive)}
       </span>
-      <Info label="kayit detayi" sheet>
+      <Info label={t.ui.archiveRowInfo} sheet>
         <b>{formatSavedAt(entry.savedAt)}</b>
         {entry.inputs.map((input) => (
           <span className="tipRow" key={input.name}>
-            {input.name}
-            <code>{input.value}</code>
+            {t.variable(input.name)}
+            <code>{archiveInputValue(t, input)}</code>
           </span>
         ))}
         {[entry.nodal, entry.primary].map((score) => (
           <span className="tipRow" key={score.name}>
-            {score.name}
+            {t.variable(score.name)}
             <code>
-              {score.value} {score.levelLabel}
+              {score.value} {t.level(score.level)}
             </code>
           </span>
         ))}
@@ -191,7 +248,7 @@ function ArchiveRow({ entry, onRemove }) {
       <button
         type="button"
         className="rowDel"
-        aria-label="kaydi sil"
+        aria-label={t.ui.deleteEntry}
         onClick={() => onRemove(entry.id)}
       >
         &times;
@@ -202,6 +259,7 @@ function ArchiveRow({ entry, onRemove }) {
 
 export default function HomePage() {
   const [view, setView] = useState("calc");
+  const [language, setLanguage] = useState(DEFAULT_LANGUAGE);
   const [archive, setArchive] = useState([]);
   const [justSaved, setJustSaved] = useState(false);
 
@@ -209,9 +267,16 @@ export default function HomePage() {
   const [selections, setSelections] = useState(null);
   const [loadError, setLoadError] = useState("");
 
+  const t = useMemo(() => createTranslator(language), [language]);
+
   useEffect(() => {
+    setLanguage(readStoredLanguage());
     setArchive(readArchive());
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   useEffect(() => {
     let isMounted = true;
@@ -250,6 +315,10 @@ export default function HomePage() {
   const deferredSelections = useDeferredValue(selections);
   const results =
     model && deferredSelections ? evaluateAxillaryModel(model, deferredSelections) : null;
+
+  function selectLanguage(nextLanguage) {
+    setLanguage(storeLanguage(nextLanguage));
+  }
 
   function selectValue(inputId, nextValue) {
     startTransition(() => {
@@ -312,7 +381,7 @@ export default function HomePage() {
     return (
       <main className="page">
         <p className="notice">
-          <b>FIS dosyalari okunamadi</b>
+          <b>{t.ui.loadErrorTitle}</b>
           {loadError}
         </p>
       </main>
@@ -322,7 +391,7 @@ export default function HomePage() {
   if (!model || !selections || !results) {
     return (
       <main className="page">
-        <p className="notice">modeller yukleniyor</p>
+        <p className="notice">{t.ui.loading}</p>
       </main>
     );
   }
@@ -337,55 +406,53 @@ export default function HomePage() {
       <header className="topbar">
         <div className="brand">
           <h1>axillaryLN</h1>
-          <p>aksiller lenf nodu tutulumu &middot; bulanik cikarim</p>
+          <p>{t.ui.tagline}</p>
         </div>
 
-        {view === "calc" ? (
-          <div className="topbarActions">
-            <Info label="Model hakkinda" align="end" below>
-              <b>Uc asamali Mamdani modeli</b>
-              <span>
-                Lenf nodu ve primer tumor sistemleri bagimsiz birer skor uretir; bu iki
-                skor final sisteme girdi olur.
-              </span>
-              <span>
-                Durulastirma <code>centroid</code>, cikis <code>0-1</code> araliginda
-                sureklidir ve <code>{threshold.toFixed(2)}</code> ve uzeri pozitif kabul
-                edilir.
-              </span>
-            </Info>
-            <button type="button" className="ghostBtn" onClick={resetSelections}>
-              sifirla
-            </button>
-            <button type="button" className="ghostBtn" onClick={() => setView("archive")}>
-              arsiv{archive.length ? ` (${archive.length})` : ""}
-            </button>
-            <button type="button" className="primaryBtn" onClick={saveEntry}>
-              {justSaved ? "kaydedildi" : "kaydet"}
-            </button>
-          </div>
-        ) : (
-          <div className="topbarActions">
+        <div className="topbarActions">
+          <LanguageSwitch language={language} t={t} onSelect={selectLanguage} />
+
+          {view === "calc" ? (
+            <>
+              <Info label={t.ui.modelInfoLabel} align="end" below>
+                <b>{t.ui.modelInfoTitle}</b>
+                <span>{t.ui.modelInfoBody}</span>
+                <span>
+                  <RichText parts={t.ui.modelInfoDefuzz(threshold.toFixed(2))} />
+                </span>
+              </Info>
+              <button type="button" className="ghostBtn" onClick={resetSelections}>
+                {t.ui.reset}
+              </button>
+              <button type="button" className="ghostBtn" onClick={() => setView("archive")}>
+                {t.ui.archive}
+                {archive.length ? ` (${archive.length})` : ""}
+              </button>
+              <button type="button" className="primaryBtn" onClick={saveEntry}>
+                {justSaved ? t.ui.saved : t.ui.save}
+              </button>
+            </>
+          ) : (
             <button type="button" className="ghostBtn" onClick={() => setView("calc")}>
-              hesaplamaya don
+              {t.ui.backToCalc}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </header>
 
       {view === "archive" ? (
         <section className="archive">
           <div className="archiveHead">
-            <h2>arsiv</h2>
-            <span>{archive.length} kayit</span>
+            <h2>{t.ui.archive}</h2>
+            <span>{t.ui.archiveCount(archive.length)}</span>
           </div>
 
           {archive.length === 0 ? (
-            <p className="notice">henuz kayit yok</p>
+            <p className="notice">{t.ui.archiveEmpty}</p>
           ) : (
             <ul className="archiveList">
               {archive.map((entry) => (
-                <ArchiveRow key={entry.id} entry={entry} onRemove={removeEntry} />
+                <ArchiveRow key={entry.id} entry={entry} t={t} onRemove={removeEntry} />
               ))}
             </ul>
           )}
@@ -393,23 +460,26 @@ export default function HomePage() {
       ) : (
         <div className="layout">
           <div className="inputs">
-            {["nodalSystem", "primarySystem"].map((systemId) => {
+            {SYSTEM_IDS.map((systemId) => {
               const system = model[systemId];
 
               return (
                 <section className="group" key={systemId}>
                   <div className="groupHead">
-                    <h2>{GROUP_TITLES[systemId]}</h2>
-                    <Info label={`${system.fileName} detaylari`}>
+                    <h2>{t.group(systemId)}</h2>
+                    <Info label={t.ui.systemInfoLabel(system.fileName)}>
                       <b>{system.fileName}</b>
                       <span className="tipRow">
-                        kural sayisi<code>{system.rules.length}</code>
+                        {t.ui.ruleCount}
+                        <code>{system.rules.length}</code>
                       </span>
                       <span className="tipRow">
-                        durulastirma<code>{system.defuzzMethod}</code>
+                        {t.ui.defuzzification}
+                        <code>{system.defuzzMethod}</code>
                       </span>
                       <span className="tipRow">
-                        cikis<code>{system.output.name}</code>
+                        {t.ui.output}
+                        <code>{system.output.name}</code>
                       </span>
                     </Info>
                   </div>
@@ -419,6 +489,7 @@ export default function HomePage() {
                       key={input.id}
                       input={input}
                       value={selections[input.id]}
+                      t={t}
                       onSelect={(nextValue) => selectValue(input.id, nextValue)}
                       onNumericBlur={() => normalizeNumericSelection(input)}
                     />
@@ -431,48 +502,54 @@ export default function HomePage() {
           <section className="result">
             <div className="resultHead">
               <span className="resultName">
-                {finalResult.outputName}
-                <Info label="Sonuc nasil hesaplanir" align="end" below>
-                  <b>Nasil hesaplanir</b>
+                {t.variable(finalResult.outputName)}
+                <Info label={t.ui.resultInfoLabel} align="end" below>
+                  <b>{t.ui.resultInfoTitle}</b>
                   <span>
-                    <code>{nodalResult.outputName}</code> ve{" "}
-                    <code>{primaryResult.outputName}</code> crisp degerleri{" "}
-                    <code>{model.finalSystem.fileName}</code> icine verilir.
+                    <RichText
+                      parts={t.ui.resultInfoFlow(
+                        nodalResult.outputName,
+                        primaryResult.outputName,
+                        model.finalSystem.fileName,
+                      )}
+                    />
                   </span>
                   <span>
-                    Seviye en yuksek uyelik derecesinden, karar ise sabit{" "}
-                    <code>{threshold.toFixed(2)}</code> esiginden gelir; ikisi
-                    0.60-0.65 bandinda ayrisabilir.
+                    <RichText parts={t.ui.resultInfoLevel(threshold.toFixed(2))} />
                   </span>
                 </Info>
               </span>
               <span className="verdict" data-positive={decision.isPositive}>
-                {decision.isPositive ? "pozitif" : "negatif"}
+                {t.verdict(decision.isPositive)}
               </span>
             </div>
 
             <div className="score">
               <span className="scoreNum">{finalResult.displayValue}</span>
               <span className="level" data-level={finalResult.category}>
-                {finalResult.categoryLabel}
+                {t.level(finalResult.category)}
               </span>
             </div>
 
             <div className="gauge" data-positive={decision.isPositive}>
               <span className="gaugeFill" style={{ width: `${toPercent(finalResult.crisp)}%` }} />
-              <span className="gaugeMark" style={{ left: `${toPercent(threshold)}%` }} />
+              <span
+                className="gaugeMark"
+                data-label={t.ui.thresholdMark(threshold.toFixed(2))}
+                style={{ left: `${toPercent(threshold)}%` }}
+              />
             </div>
 
             <div className="subs">
-              <SubScore result={nodalResult} />
-              <SubScore result={primaryResult} />
+              <SubScore result={nodalResult} t={t} />
+              <SubScore result={primaryResult} t={t} />
             </div>
           </section>
         </div>
       )}
 
       <footer className="sources">
-        <b>kaynak</b>
+        <b>{t.ui.sources}</b>
         {fuzzyUiConfig.referenceFiles.map((file) => (
           <a key={file.fileName} href={file.url} target="_blank" rel="noreferrer">
             {file.fileName}

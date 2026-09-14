@@ -230,6 +230,18 @@ a {
   box-shadow: 0 1px 3px rgba(16, 40, 66, 0.12);
 }
 
+.seg--lang {
+  background: transparent;
+  border-color: var(--line-strong);
+}
+
+.seg--lang .segBtn {
+  padding: 5px 9px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
 /* ---------- result ---------- */
 
 .result {
@@ -337,7 +349,7 @@ a {
 }
 
 .gaugeMark::after {
-  content: "esik 0.60";
+  content: attr(data-label);
   position: absolute;
   top: calc(100% + 5px);
   left: 50%;
@@ -558,11 +570,11 @@ a {
     gap: 10px;
   }
 
-  .seg {
+  .field .seg {
     width: 100%;
   }
 
-  .segBtn {
+  .field .segBtn {
     flex: 1;
   }
 }
