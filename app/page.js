@@ -9,8 +9,6 @@ import {
   sanitizeNumericSelection,
 } from "@/lib/fuzzy";
 
-const PASSCODE = "1001";
-const UNLOCK_KEY = "axillaryLN.unlocked";
 const ARCHIVE_KEY = "axillaryLN.archive";
 
 const GROUP_TITLES = {
@@ -104,51 +102,6 @@ function MembershipTip({ input }) {
         </span>
       ))}
     </>
-  );
-}
-
-function Gate({ onUnlock }) {
-  const [code, setCode] = useState("");
-  const [failed, setFailed] = useState(false);
-
-  function submit(event) {
-    event.preventDefault();
-
-    if (code === PASSCODE) {
-      onUnlock();
-      return;
-    }
-
-    setFailed(true);
-    setCode("");
-  }
-
-  return (
-    <main className="page gatePage">
-      <form className="gate" onSubmit={submit}>
-        <h1>axillaryLN</h1>
-        <p>erisim kodu</p>
-        <input
-          type="password"
-          inputMode="numeric"
-          autoComplete="off"
-          autoFocus
-          aria-label="erisim kodu"
-          aria-invalid={failed}
-          value={code}
-          onChange={(event) => {
-            setCode(event.target.value);
-            setFailed(false);
-          }}
-        />
-        <button type="submit" className="primaryBtn">
-          gir
-        </button>
-        <span className="gateNote" data-error={failed}>
-          {failed ? "kod hatali" : " "}
-        </span>
-      </form>
-    </main>
   );
 }
 
@@ -248,8 +201,6 @@ function ArchiveRow({ entry, onRemove }) {
 }
 
 export default function HomePage() {
-  const [booted, setBooted] = useState(false);
-  const [unlocked, setUnlocked] = useState(false);
   const [view, setView] = useState("calc");
   const [archive, setArchive] = useState([]);
   const [justSaved, setJustSaved] = useState(false);
@@ -259,14 +210,7 @@ export default function HomePage() {
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    try {
-      setUnlocked(window.sessionStorage.getItem(UNLOCK_KEY) === "1");
-    } catch {
-      // oturum depolamasi yoksa kilitli baslar
-    }
-
     setArchive(readArchive());
-    setBooted(true);
   }, []);
 
   useEffect(() => {
@@ -306,16 +250,6 @@ export default function HomePage() {
   const deferredSelections = useDeferredValue(selections);
   const results =
     model && deferredSelections ? evaluateAxillaryModel(model, deferredSelections) : null;
-
-  function unlock() {
-    try {
-      window.sessionStorage.setItem(UNLOCK_KEY, "1");
-    } catch {
-      // depolama kapaliysa kilit sadece bu sayfa icin acilir
-    }
-
-    setUnlocked(true);
-  }
 
   function selectValue(inputId, nextValue) {
     startTransition(() => {
@@ -372,14 +306,6 @@ export default function HomePage() {
     const next = archive.filter((entry) => entry.id !== entryId);
     setArchive(next);
     writeArchive(next);
-  }
-
-  if (!booted) {
-    return <main className="page" />;
-  }
-
-  if (!unlocked) {
-    return <Gate onUnlock={unlock} />;
   }
 
   if (loadError) {
