@@ -1,0 +1,26 @@
+{
+  "title": "axillaryLN Fuzzy Workspace: Axillary Lymph Node Involvement Fuzzy Inference Interface (v1.0)",
+  "description": "Version 1.0 of a browser-based research and reproducibility interface for the axillary lymph-node fuzzy inference model. The interface evaluates the locked V3 nodal, primary-tumour, and final Mamdani FIS files locally in the browser. Research use only — not for clinical use. This software is not a medical device and must not be used for clinical decision-making, diagnosis, or patient management.",
+  "upload_type": "software",
+  "license": "MIT",
+  "keywords": [
+    "fuzzy inference",
+    "axillary lymph node",
+    "reproducibility",
+    "research software"
+  ],
+  "creators": [
+    {
+      "name": "Öz, Diba Saygılı"
+    },
+    {
+      "name": "Sevim, Mert Efe"
+    },
+    {
+      "name": "Ürger, Sacide Efsun"
+    },
+    {
+      "name": "Yardımcı, Ahmet"
+    }
+  ]
+}
