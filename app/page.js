@@ -3,7 +3,6 @@
 import {
   Fragment,
   startTransition,
-  useDeferredValue,
   useEffect,
   useMemo,
   useState,
@@ -12,6 +11,7 @@ import {
   createDefaultSelections,
   evaluateAxillaryModel,
   fuzzyUiConfig,
+  inspectNumericSelection,
   loadFuzzyModel,
   sanitizeNumericSelection,
 } from "@/lib/fuzzy";
@@ -160,11 +160,37 @@ function MembershipTip({ input, t }) {
   );
 }
 
-function Field({ input, value, t, onSelect, onNumericBlur }) {
+function numericIssueMessage(t, input, issue) {
+  if (!issue) {
+    return "";
+  }
+
   const name = t.variable(input.id);
 
+  if (issue.reason === "required") {
+    return t.ui.inputRequired(name);
+  }
+
+  if (issue.reason === "invalid") {
+    return t.ui.inputInvalid(name);
+  }
+
+  if (issue.reason === "belowMinimum") {
+    return t.ui.inputBelowMinimum(name, issue.min, input.unit);
+  }
+
+  return t.ui.inputClamped(name, issue.min, issue.max, input.unit, issue.appliedValue);
+}
+
+function Field({ input, value, t, issue, normalizationNotice, onSelect, onNumericBlur }) {
+  const name = t.variable(input.id);
+  const message = numericIssueMessage(t, input, issue || normalizationNotice);
+  const messageId = `validation-${input.id}`;
+  const isError = issue?.status === "error";
+  const isWarning = issue?.status === "warning" || Boolean(normalizationNotice);
+
   return (
-    <div className="field">
+    <div className={`field${isError ? " field--error" : ""}${isWarning ? " field--warning" : ""}`}>
       <div className="fieldName">
         <span>{name}</span>
         <Info label={t.ui.membershipInfoLabel(name)}>
@@ -181,8 +207,10 @@ function Field({ input, value, t, onSelect, onNumericBlur }) {
             max={input.range[1]}
             step={input.step || "any"}
             value={value}
+            aria-invalid={isError || undefined}
+            aria-describedby={message ? messageId : undefined}
             onChange={(event) => onSelect(event.target.value)}
-            onBlur={onNumericBlur}
+            onBlur={() => onNumericBlur(value)}
           />
           <em>{input.unit}</em>
         </div>
@@ -201,6 +229,16 @@ function Field({ input, value, t, onSelect, onNumericBlur }) {
           ))}
         </div>
       )}
+
+      {message ? (
+        <p
+          id={messageId}
+          className={`fieldValidation${isError ? " fieldValidation--error" : ""}`}
+          role={isError ? "alert" : "status"}
+        >
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -262,6 +300,7 @@ export default function HomePage() {
   const [language, setLanguage] = useState(DEFAULT_LANGUAGE);
   const [archive, setArchive] = useState([]);
   const [justSaved, setJustSaved] = useState(false);
+  const [normalizationNotices, setNormalizationNotices] = useState({});
 
   const [model, setModel] = useState(null);
   const [selections, setSelections] = useState(null);
@@ -312,15 +351,49 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, [justSaved]);
 
-  const deferredSelections = useDeferredValue(selections);
-  const results =
-    model && deferredSelections ? evaluateAxillaryModel(model, deferredSelections) : null;
+  const allInputs = useMemo(
+    () => (model ? [...model.nodalSystem.inputs, ...model.primarySystem.inputs] : []),
+    [model],
+  );
+  const numericIssues = useMemo(
+    () =>
+      Object.fromEntries(
+        allInputs
+          .filter((input) => input.mode === "numeric")
+          .map((input) => [input.id, inspectNumericSelection(input, selections?.[input.id])]),
+      ),
+    [allInputs, selections],
+  );
+  const hasInputErrors = Object.values(numericIssues).some((issue) => issue?.status === "error");
+  const consistencyWarning = useMemo(() => {
+    const corticalIssue = numericIssues.cortical_thickness;
+    const shortAxisIssue = numericIssues.short_axis_mm;
+
+    if (corticalIssue?.status === "error" || shortAxisIssue?.status === "error") {
+      return false;
+    }
+
+    const cortical = Number(selections?.cortical_thickness);
+    const shortAxis = Number(selections?.short_axis_mm);
+
+    return Number.isFinite(cortical) && Number.isFinite(shortAxis) && cortical > shortAxis;
+  }, [numericIssues, selections]);
+  const results = model && selections && !hasInputErrors ? evaluateAxillaryModel(model, selections) : null;
 
   function selectLanguage(nextLanguage) {
     setLanguage(storeLanguage(nextLanguage));
   }
 
   function selectValue(inputId, nextValue) {
+    setNormalizationNotices((current) => {
+      if (!current[inputId]) {
+        return current;
+      }
+
+      const { [inputId]: ignored, ...remaining } = current;
+      return remaining;
+    });
+
     startTransition(() => {
       setSelections((current) => {
         if (!current || current[inputId] === nextValue) {
@@ -335,7 +408,17 @@ export default function HomePage() {
     });
   }
 
-  function normalizeNumericSelection(input) {
+  function normalizeNumericSelection(input, rawValue) {
+    const issue = inspectNumericSelection(input, rawValue);
+
+    if (issue?.status === "error") {
+      return;
+    }
+
+    if (issue?.status === "warning") {
+      setNormalizationNotices((current) => ({ ...current, [input.id]: issue }));
+    }
+
     startTransition(() => {
       setSelections((current) => {
         if (!current) {
@@ -358,6 +441,7 @@ export default function HomePage() {
     startTransition(() => {
       setSelections(createDefaultSelections(model));
     });
+    setNormalizationNotices({});
   }
 
   function saveEntry() {
@@ -388,7 +472,7 @@ export default function HomePage() {
     );
   }
 
-  if (!model || !selections || !results) {
+  if (!model || !selections) {
     return (
       <main className="page">
         <p className="notice">{t.ui.loading}</p>
@@ -396,8 +480,48 @@ export default function HomePage() {
     );
   }
 
-  const { finalResult, nodalResult, primaryResult, decision } = results;
-  const threshold = decision.threshold;
+  const inputControls = SYSTEM_IDS.map((systemId) => {
+    const system = model[systemId];
+
+    return (
+      <section className="group" key={systemId}>
+        <div className="groupHead">
+          <h2>{t.group(systemId)}</h2>
+          <Info label={t.ui.systemInfoLabel(system.fileName)}>
+            <b>{system.fileName}</b>
+            <span className="tipRow">
+              {t.ui.ruleCount}
+              <code>{system.rules.length}</code>
+            </span>
+            <span className="tipRow">
+              {t.ui.defuzzification}
+              <code>{system.defuzzMethod}</code>
+            </span>
+            <span className="tipRow">
+              {t.ui.output}
+              <code>{system.output.name}</code>
+            </span>
+          </Info>
+        </div>
+
+        {system.inputs.map((input) => (
+          <Field
+            key={input.id}
+            input={input}
+            value={selections[input.id]}
+            t={t}
+            issue={numericIssues[input.id]}
+            normalizationNotice={normalizationNotices[input.id]}
+            onSelect={(nextValue) => selectValue(input.id, nextValue)}
+            onNumericBlur={(rawValue) => normalizeNumericSelection(input, rawValue)}
+          />
+        ))}
+      </section>
+    );
+  });
+
+  const { finalResult, nodalResult, primaryResult, decision } = results || {};
+  const threshold = decision?.threshold ?? fuzzyUiConfig.decisionThreshold;
   const toPercent = (value) =>
     ((value - finalResult.range[0]) / (finalResult.range[1] - finalResult.range[0])) * 100;
 
@@ -407,6 +531,7 @@ export default function HomePage() {
         <div className="brand">
           <h1>axillaryLN</h1>
           <p>{t.ui.tagline}</p>
+          <p className="researchUseOnly">{t.ui.researchUseOnly}</p>
         </div>
 
         <div className="topbarActions">
@@ -428,7 +553,7 @@ export default function HomePage() {
                 {t.ui.archive}
                 {archive.length ? ` (${archive.length})` : ""}
               </button>
-              <button type="button" className="primaryBtn" onClick={saveEntry}>
+              <button type="button" className="primaryBtn" onClick={saveEntry} disabled={!results}>
                 {justSaved ? t.ui.saved : t.ui.save}
               </button>
             </>
@@ -460,46 +585,12 @@ export default function HomePage() {
       ) : (
         <div className="layout">
           <div className="inputs">
-            {SYSTEM_IDS.map((systemId) => {
-              const system = model[systemId];
-
-              return (
-                <section className="group" key={systemId}>
-                  <div className="groupHead">
-                    <h2>{t.group(systemId)}</h2>
-                    <Info label={t.ui.systemInfoLabel(system.fileName)}>
-                      <b>{system.fileName}</b>
-                      <span className="tipRow">
-                        {t.ui.ruleCount}
-                        <code>{system.rules.length}</code>
-                      </span>
-                      <span className="tipRow">
-                        {t.ui.defuzzification}
-                        <code>{system.defuzzMethod}</code>
-                      </span>
-                      <span className="tipRow">
-                        {t.ui.output}
-                        <code>{system.output.name}</code>
-                      </span>
-                    </Info>
-                  </div>
-
-                  {system.inputs.map((input) => (
-                    <Field
-                      key={input.id}
-                      input={input}
-                      value={selections[input.id]}
-                      t={t}
-                      onSelect={(nextValue) => selectValue(input.id, nextValue)}
-                      onNumericBlur={() => normalizeNumericSelection(input)}
-                    />
-                  ))}
-                </section>
-              );
-            })}
+            {inputControls}
+            {consistencyWarning ? <p className="consistencyWarning">{t.ui.impossibleMeasurements}</p> : null}
           </div>
 
-          <section className="result">
+          {results ? (
+            <section className="result">
             <div className="resultHead">
               <span className="resultName">
                 {t.variable(finalResult.outputName)}
@@ -544,11 +635,17 @@ export default function HomePage() {
               <SubScore result={nodalResult} t={t} />
               <SubScore result={primaryResult} t={t} />
             </div>
-          </section>
+            </section>
+          ) : (
+            <section className="result result--pending">
+              <p>{t.ui.correctInput}</p>
+            </section>
+          )}
         </div>
       )}
 
       <footer className="sources">
+        <span className="version">{t.ui.version}</span>
         <b>{t.ui.sources}</b>
         {fuzzyUiConfig.referenceFiles.map((file) => (
           <a key={file.fileName} href={file.url} target="_blank" rel="noreferrer">

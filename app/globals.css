@@ -76,6 +76,15 @@ a {
   font-size: 0.8rem;
 }
 
+.brand .researchUseOnly {
+  margin-top: 8px;
+  color: #8b321b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .topbarActions {
   display: flex;
   align-items: center;
@@ -190,12 +199,43 @@ a {
   box-shadow: 0 0 0 3px rgba(29, 95, 158, 0.12);
 }
 
+.field--error .num input {
+  border-color: #b33b26;
+}
+
+.field--warning .num input {
+  border-color: #b8801a;
+}
+
 .num em {
   width: 18px;
   color: var(--text-faint);
   font-family: var(--font-mono);
   font-size: 0.74rem;
   font-style: normal;
+}
+
+.fieldValidation {
+  grid-column: 1 / -1;
+  margin: -5px 0 3px;
+  color: #8a5c09;
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.fieldValidation--error {
+  color: #a33220;
+}
+
+.consistencyWarning {
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid rgba(184, 128, 26, 0.32);
+  border-radius: 10px;
+  background: rgba(184, 128, 26, 0.08);
+  color: #795008;
+  font-size: 0.76rem;
+  line-height: 1.5;
 }
 
 /* ---------- segmented ---------- */
@@ -506,6 +546,12 @@ a {
   font-size: 0.72rem;
 }
 
+.sources .version {
+  margin-right: auto;
+  color: var(--text-soft);
+  font-family: var(--font-mono);
+}
+
 .sources b {
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -537,6 +583,18 @@ a {
   margin-bottom: 6px;
   color: var(--text);
   font-size: 0.95rem;
+}
+
+.result--pending {
+  min-height: 160px;
+  align-content: center;
+}
+
+.result--pending p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.84rem;
+  line-height: 1.5;
 }
 
 /* ---------- responsive ---------- */
@@ -592,6 +650,11 @@ a {
 
 .primaryBtn:hover {
   opacity: 0.84;
+}
+
+.primaryBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 /* ---------- archive ---------- */
